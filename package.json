@@ -1,0 +1,27 @@
+{
+  "name": "sift",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sift: AI resume screening and client shortlist portal for a staffing firm",
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "engines": {
+    "node": ">=20.12"
+  },
+  "scripts": {
+    "setup": "npm install && npm run seed",
+    "seed": "npm run seed -w server",
+    "dev": "concurrently -k -n api,web -c gray,green \"npm run dev -w server\" \"npm run dev -w client\"",
+    "build": "npm run build -w client",
+    "start": "npm run start -w server",
+    "test": "npm test -w server",
+    "format": "prettier --write \"server/**/*.js\" \"client/src/**/*.{js,jsx,css}\"",
+    "format:check": "prettier --check \"server/**/*.js\" \"client/src/**/*.{js,jsx,css}\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0",
+    "prettier": "^3.3.3"
+  }
+}
