@@ -1,0 +1,28 @@
+Vikram Singh
+Java Developer
+Email: vikram.singh@example.com | Phone: +91 98999 00103
+Location: Noida
+
+PROFESSIONAL SUMMARY
+2.5 years of experience in Java, Hibernate, SQL for enterprise software teams.
+
+EXPERIENCE
+Java Developer, Wipro — Jun 2025 – Present
+• Developed and maintained backend modules in Java for a telecom billing product
+• Modelled persistence with Hibernate and JPA on PostgreSQL
+Java Developer, Infosys — May 2024 – Jun 2025
+• Tuned SQL queries and indexes, cutting report runtime by 38%
+
+EDUCATION
+B.Tech, Computer Science, Regional Institute of Technology, 2019–2023
+
+SKILLS
+Java, Hibernate, SQL
+
+PERSONAL DETAILS
+Gender: Male
+Date of Birth: 17 Sep 1998
+Marital Status: Single
+Notice Period: 30 days
+Current CTC: 7 LPA
+Expected CTC: 10 LPA
