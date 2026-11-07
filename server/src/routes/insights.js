@@ -24,7 +24,7 @@ export function insightRoutes(ctx) {
       )
       .get();
     const requisitions = db
-      .prepare('SELECT created_at AS createdAt, first_submitted_at AS firstSubmittedAt FROM requisitions')
+      .prepare('SELECT created_at AS createdAt, first_submitted_at AS firstSubmittedAt, status FROM requisitions')
       .all();
     const shortlisted = requisitions.filter((r) => r.firstSubmittedAt);
     const hours = shortlisted.map((r) => (new Date(r.firstSubmittedAt) - new Date(r.createdAt)) / HOUR_MS);
@@ -36,7 +36,7 @@ export function insightRoutes(ctx) {
       .all();
 
     res.json({
-      requisitions: requisitions.length,
+      requisitions: requisitions.filter((r) => r.status === 'open').length,
       cvsRanked: totals.scored,
       readingMinutesSaved: Math.max(0, (totals.scored - (totals.opened ?? 0)) * BASELINE_MINUTES_PER_CV),
       baselineMinutesPerCv: BASELINE_MINUTES_PER_CV,

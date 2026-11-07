@@ -302,6 +302,74 @@ describe('Consent, deletion and audit trail', () => {
   });
 });
 
+describe('Closing and deleting roles', () => {
+  const newRole = async (title = 'Temp Role') => {
+    const draft = (
+      await recruiter.post('/requisitions/extract', { text: `${title}, 2-4 years, Java, Noida, notice up to 30 days` })
+    ).body;
+    const clientId = app.db.prepare('SELECT id FROM clients ORDER BY id LIMIT 1').get().id;
+    return (await recruiter.post('/requisitions', { clientId, jdText: '', scorecard: draft.scorecard })).body;
+  };
+  const cvText = (name, email) =>
+    `${name}\nJava Developer\nEmail: ${email}\nLocation: Noida\nEXPERIENCE\nJava Developer, Acme — Jan 2021 – Present\n• Built Java services for a payments platform\n${'Worked on backend features. '.repeat(10)}`;
+
+  it('deletes an untouched role and erases CVs that belong to no other role', async () => {
+    const role = await newRole();
+    const upload = await recruiter.post(
+      `/requisitions/${role.id}/cvs`,
+      cvForm([['Only_Here.txt', cvText('Only Here', 'only.here@example.org')]]),
+    );
+    const row = app.db
+      .prepare('SELECT c.id, c.file_path FROM candidates c JOIN applications a ON a.candidate_id = c.id WHERE a.id = ?')
+      .get(upload.body.results[0].applicationId);
+    assert.ok(fs.existsSync(row.file_path));
+
+    const res = await recruiter.del(`/requisitions/${role.id}`);
+    assert.equal(res.status, 200);
+    assert.equal(res.body.cvsRemoved, 1);
+    assert.equal(app.db.prepare('SELECT COUNT(*) AS n FROM requisitions WHERE id = ?').get(role.id).n, 0);
+    assert.equal(app.db.prepare('SELECT COUNT(*) AS n FROM candidates WHERE id = ?').get(row.id).n, 0);
+    assert.ok(!fs.existsSync(row.file_path), 'the stored CV file must be deleted too');
+    assert.equal((await recruiter.get(`/requisitions/${role.id}`)).status, 404);
+    const log = (await head.get('/audit?action=requisition_deleted')).body.entries;
+    assert.ok(log.length >= 1);
+  });
+
+  it('keeps candidates that are also ranked for another role', async () => {
+    const role = await newRole('Shared Role');
+    const email = 'shared.person@example.org';
+    await recruiter.post(`/requisitions/${role.id}/cvs`, cvForm([['Shared.txt', cvText('Shared Person', email)]]));
+    const other = app.db.prepare("SELECT id FROM requisitions WHERE title = 'Store Manager'").get().id;
+    await recruiter.post(`/requisitions/${other}/cvs`, cvForm([['Shared_again.txt', cvText('Shared Person', email)]]));
+
+    assert.equal((await recruiter.del(`/requisitions/${role.id}`)).body.cvsRemoved, 0);
+    assert.equal(app.db.prepare('SELECT COUNT(*) AS n FROM candidates WHERE email = ?').get(email).n, 1);
+  });
+
+  it('refuses to delete a role that has candidates with the client, and closing it blocks new CVs', async () => {
+    const id = javaReq();
+    const blocked = await recruiter.del(`/requisitions/${id}`);
+    assert.equal(blocked.status, 409);
+    assert.match(blocked.body.error, /Close it instead/);
+
+    assert.equal((await recruiter.post(`/requisitions/${id}/status`, { status: 'closed' })).body.status, 'closed');
+    const upload = await recruiter.post(
+      `/requisitions/${id}/cvs`,
+      cvForm([['x.txt', cvText('Late Comer', 'late@example.org')]]),
+    );
+    assert.equal(upload.status, 409);
+    assert.match(upload.body.error, /closed/);
+    assert.equal((await recruiter.post(`/requisitions/${id}/status`, { status: 'open' })).body.status, 'open');
+  });
+
+  it('lets only recruiters delete or close roles', async () => {
+    const id = javaReq();
+    assert.equal((await head.del(`/requisitions/${id}`)).status, 403);
+    assert.equal((await head.post(`/requisitions/${id}/status`, { status: 'closed' })).status, 403);
+    assert.equal((await orbit.del(`/requisitions/${id}`)).status, 403);
+  });
+});
+
 describe('Insights', () => {
   it('compares AI ranks with recruiter picks and lists disagreements', async () => {
     const { body } = await head.get('/insights/agreement');

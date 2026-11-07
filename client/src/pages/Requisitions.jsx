@@ -73,9 +73,12 @@ export default function Requisitions() {
           <ul className="req-list">
             {data.map((r, i) => (
               <li key={r.id} style={{ '--i': i }}>
-                <Link to={`/requisitions/${r.id}`} className="req-row">
+                <Link to={`/requisitions/${r.id}`} className={`req-row ${r.status === 'closed' ? 'closed' : ''}`}>
                   <span className="req-title">
-                    <b>{r.title}</b>
+                    <b>
+                      {r.title}
+                      {r.status === 'closed' && <span className="pill closed-pill">Closed</span>}
+                    </b>
                     <small>{r.clientName}</small>
                   </span>
                   <span className="req-stat">

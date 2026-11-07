@@ -33,7 +33,7 @@ npm start          # Express serves the API and the built app on http://localhos
 ### Tests and formatting
 
 ```bash
-npm test                 # 40 test cases: scoring, fairness, parsing, ingestion, API access control, consent and erasure
+npm test                 # 44 test cases: scoring, fairness, parsing, ingestion, API access control, consent and erasure
 npm run format:check     # Prettier
 ```
 

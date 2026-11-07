@@ -2207,3 +2207,18 @@ mark {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ---------- Closing and deleting roles ---------- */
+.head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.req-row.closed {
+  opacity: 0.65;
+}
+.closed-pill {
+  margin-left: 10px;
+  vertical-align: middle;
+  font-size: 11.5px;
+}

@@ -1,9 +1,10 @@
-import { ArrowLeft, ChevronDown, Search, Upload, Users } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Lock, Search, Trash2, Upload, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth } from '../auth.jsx';
 import CandidatePanel from '../components/CandidatePanel.jsx';
+import DeleteRoleModal from '../components/DeleteRoleModal.jsx';
 import Pipeline from '../components/Pipeline.jsx';
 import ScorecardEditor from '../components/ScorecardEditor.jsx';
 import UploadPanel from '../components/UploadPanel.jsx';
@@ -78,6 +79,7 @@ export default function Requisition() {
   const { id } = useParams();
   const { user } = useAuth();
   const toast = useToast();
+  const [deleting, setDeleting] = useState(false);
   const canEdit = user.role === 'recruiter';
   const [params, setParams] = useSearchParams();
   const tab = params.get('tab') ?? 'ranked';
@@ -105,6 +107,16 @@ export default function Requisition() {
   const [errors, setErrors] = useState({});
   useEffect(() => setDraft(req.data?.scorecard ?? null), [req.data]);
   const dirty = draft && req.data && JSON.stringify(draft) !== JSON.stringify(req.data.scorecard);
+
+  const setStatus = async (status) => {
+    try {
+      await api.post(`/requisitions/${id}/status`, { status });
+      toast(status === 'closed' ? 'Role closed' : 'Role reopened');
+      refresh();
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  };
 
   const saveScorecard = async () => {
     setSaving(true);
@@ -156,9 +168,25 @@ export default function Requisition() {
           </div>
         </div>
         {canEdit && (
-          <button className="btn primary" onClick={() => (update({ tab: 'ranked' }), setUploadOpen((o) => !o))}>
-            <Upload size={17} /> Add CVs
-          </button>
+          <div className="head-actions">
+            {r.status === 'open' && (
+              <button className="btn primary" onClick={() => (update({ tab: 'ranked' }), setUploadOpen((o) => !o))}>
+                <Upload size={17} /> Add CVs
+              </button>
+            )}
+            <button className="btn" onClick={() => setStatus(r.status === 'open' ? 'closed' : 'open')}>
+              {r.status === 'open' ? (
+                <>
+                  <Lock size={16} /> Close role
+                </>
+              ) : (
+                'Reopen role'
+              )}
+            </button>
+            <button className="btn danger-outline" onClick={() => setDeleting(true)}>
+              <Trash2 size={16} /> Delete
+            </button>
+          </div>
         )}
       </header>
 
@@ -180,7 +208,18 @@ export default function Requisition() {
 
       {tab === 'ranked' && (
         <>
-          {canEdit && (uploadOpen || total === 0) && <UploadPanel requisitionId={id} onDone={refresh} />}
+          {r.status === 'closed' && (
+            <div className="callout warn" role="note">
+              <Lock size={17} />
+              <div>
+                <b>This role is closed</b>
+                <p>CVs cannot be added until it is reopened. Existing candidates and decisions stay as they are.</p>
+              </div>
+            </div>
+          )}
+          {canEdit && r.status === 'open' && (uploadOpen || total === 0) && (
+            <UploadPanel requisitionId={id} onDone={refresh} />
+          )}
 
           <div className="toolbar">
             <label className="search">
@@ -268,6 +307,10 @@ export default function Requisition() {
             <ScorecardEditor value={draft} errors={errors} onChange={setDraft} />
           </fieldset>
         </section>
+      )}
+
+      {deleting && (
+        <DeleteRoleModal requisition={r} total={total} onClose={() => setDeleting(false)} onClosed={refresh} />
       )}
 
       {openId && (

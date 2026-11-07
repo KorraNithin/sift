@@ -59,6 +59,7 @@ const createSchema = z.object({
   jdText: z.string().max(20000).default(''),
   scorecard: scorecardSchema,
 });
+const statusSchema = z.object({ status: z.enum(['open', 'closed']) });
 const extractSchema = z.object({ text: z.string().trim().min(10, 'Paste the job description').max(20000) });
 const uploadSchema = z.object({
   consent: z.literal('true', { errorMap: () => ({ message: 'Confirm that candidates consented to this use' }) }),
@@ -102,7 +103,7 @@ export function requisitionRoutes(ctx) {
            (SELECT COUNT(*) FROM applications a WHERE a.requisition_id = r.id AND a.submitted_at IS NOT NULL) AS submitted,
            (SELECT COUNT(*) FROM applications a WHERE a.requisition_id = r.id AND a.opened_at IS NOT NULL) AS opened,
            (SELECT MAX(score) FROM applications a WHERE a.requisition_id = r.id) AS topScore
-         FROM requisitions r JOIN clients cl ON cl.id = r.client_id ORDER BY r.created_at DESC`,
+         FROM requisitions r JOIN clients cl ON cl.id = r.client_id ORDER BY (r.status = 'closed'), r.created_at DESC`,
       )
       .all();
     res.json(rows);
@@ -148,6 +149,64 @@ export function requisitionRoutes(ctx) {
     res.json({ ...requisition, stageCounts });
   });
 
+  router.post(
+    '/requisitions/:id/status',
+    recruiterOnly,
+    handle((req, res) => {
+      const id = idParam(req);
+      getRequisition(id);
+      const { status } = parse(statusSchema, req.body);
+      db.prepare('UPDATE requisitions SET status = ? WHERE id = ?').run(status, id);
+      audit(db, req.user, status === 'closed' ? 'requisition_closed' : 'requisition_reopened', 'requisition', id);
+      res.json(getRequisition(id));
+    }),
+  );
+
+  /**
+   * Deletes a role that has not gone to a client. CVs that belong to no other role are erased too
+   * (hiring-only purpose), including their stored files. Roles with client activity must be closed instead.
+   */
+  router.delete(
+    '/requisitions/:id',
+    recruiterOnly,
+    handle(async (req, res) => {
+      const id = idParam(req);
+      const requisition = getRequisition(id);
+      const { n } = db
+        .prepare('SELECT COUNT(*) AS n FROM applications WHERE requisition_id = ? AND submitted_at IS NOT NULL')
+        .get(id);
+      if (n > 0) {
+        throw new HttpError(
+          409,
+          `${n} candidate${n > 1 ? 's were' : ' was'} submitted to the client for this role, so it cannot be deleted. Close it instead.`,
+        );
+      }
+
+      const files = [];
+      const summary = db.transaction(() => {
+        const linked = db.prepare('SELECT candidate_id FROM applications WHERE requisition_id = ?').all(id);
+        db.prepare('DELETE FROM applications WHERE requisition_id = ?').run(id);
+        db.prepare('DELETE FROM requisitions WHERE id = ?').run(id);
+        let cvsRemoved = 0;
+        for (const { candidate_id: candidateId } of linked) {
+          if (db.prepare('SELECT 1 FROM applications WHERE candidate_id = ? LIMIT 1').get(candidateId)) continue;
+          const candidate = db.prepare('SELECT code, file_path FROM candidates WHERE id = ?').get(candidateId);
+          if (candidate.file_path) files.push(candidate.file_path);
+          db.prepare('DELETE FROM candidates WHERE id = ?').run(candidateId);
+          audit(db, req.user, 'candidate_deleted_with_requisition', 'candidate', candidateId, {
+            code: candidate.code,
+            requisitionId: id,
+          });
+          cvsRemoved += 1;
+        }
+        audit(db, req.user, 'requisition_deleted', 'requisition', id, { title: requisition.title, cvsRemoved });
+        return { cvsRemoved, applications: linked.length };
+      })();
+      await Promise.all(files.map((file) => fs.rm(file, { force: true })));
+      res.json(summary);
+    }),
+  );
+
   router.put(
     '/requisitions/:id/scorecard',
     recruiterOnly,
@@ -182,7 +241,8 @@ export function requisitionRoutes(ctx) {
       const files = req.files ?? [];
       try {
         const id = idParam(req);
-        getRequisition(id);
+        if (getRequisition(id).status === 'closed')
+          throw new HttpError(409, 'This role is closed. Reopen it to add CVs.');
         const { consentSource } = parse(uploadSchema, req.body);
         if (!files.length) throw new HttpError(400, 'Choose at least one CV');
 
