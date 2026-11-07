@@ -31,6 +31,18 @@ describe('Authentication and roles', () => {
     assert.equal((await res.json()).error, 'Email or password is incorrect');
   });
 
+  it('blocks state-changing requests that lack the client header, whatever the Origin or Host', async () => {
+    const attempt = (headers) =>
+      fetch(`${app.base}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', ...headers },
+        body: JSON.stringify({ email: 'recruiter@companya.test', password: 'Demo@1234' }),
+      });
+    assert.equal((await attempt({ origin: 'https://evil.example' })).status, 403);
+    // Behind a proxy (Vite dev server, Codespaces, a load balancer) Host and Origin often differ. That must not matter.
+    assert.equal((await attempt({ origin: 'http://localhost:5173', 'x-requested-with': 'sift' })).status, 200);
+  });
+
   it('keeps clients out of recruiter endpoints and recruiters out of the portal', async () => {
     assert.equal((await orbit.get('/requisitions')).status, 403);
     assert.equal((await recruiter.get('/portal/requisitions')).status, 403);

@@ -33,7 +33,7 @@ npm start          # Express serves the API and the built app on http://localhos
 ### Tests and formatting
 
 ```bash
-npm test                 # 39 test cases: scoring, fairness, parsing, ingestion, API access control, consent and erasure
+npm test                 # 40 test cases: scoring, fairness, parsing, ingestion, API access control, consent and erasure
 npm run format:check     # Prettier
 ```
 
@@ -47,6 +47,7 @@ npm run format:check     # Prettier
 | --- | --- |
 | `better-sqlite3` fails to install | Use Node 20 or 22 LTS. The package ships prebuilt binaries for them. On other versions it compiles and needs a C++ toolchain. |
 | Port 4000 or 5173 already in use | Set `PORT=4100` before `npm run dev`, or stop the other process. |
+| Login says "Request blocked" | The browser is talking to the API without the app's own header. Use the app at http://localhost:5173 (dev) or :4000 (production run), not by calling the API from another site or tool. |
 | Login says "Too many attempts" | The login rate limit is 30 attempts per 15 minutes per IP. Restart the server to clear it. |
 | Blank page at :4000 | Run `npm run build` first. Without `client/dist` the server only serves the API. |
 

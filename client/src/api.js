@@ -7,7 +7,7 @@ export class ApiError extends Error {
 }
 
 async function request(path, { method = 'GET', body, form } = {}) {
-  const options = { method, credentials: 'same-origin', headers: {} };
+  const options = { method, credentials: 'same-origin', headers: { 'X-Requested-With': 'sift' } };
   if (form) {
     options.body = form;
   } else if (body !== undefined) {

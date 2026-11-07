@@ -27,17 +27,16 @@ export const requireRole =
   (req, _res, next) =>
     roles.includes(req.user.role) ? next() : next(new HttpError(403, 'You do not have access to this'));
 
-/** Blocks cross-site state-changing requests (defence in depth on top of SameSite cookies). */
-export function sameOrigin(req, _res, next) {
-  const origin = req.headers.origin;
-  if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && origin) {
-    let host;
-    try {
-      host = new URL(origin).host;
-    } catch {
-      return next(new HttpError(403, 'Cross-site request blocked'));
-    }
-    if (host !== req.headers.host) return next(new HttpError(403, 'Cross-site request blocked'));
-  }
-  return next();
+export const CLIENT_HEADER = 'x-requested-with';
+export const CLIENT_HEADER_VALUE = 'sift';
+
+/**
+ * CSRF defence for state-changing requests. A page on another site cannot add a custom header
+ * without a CORS preflight, and this server never grants one. Combined with SameSite cookies this
+ * does not depend on the Host or Origin headers, which proxies (Vite, Codespaces, load balancers) rewrite.
+ */
+export function requireClientHeader(req, _res, next) {
+  const safe = ['GET', 'HEAD', 'OPTIONS'].includes(req.method);
+  if (safe || req.headers[CLIENT_HEADER] === CLIENT_HEADER_VALUE) return next();
+  return next(new HttpError(403, 'Request blocked. Reload the page and try again.'));
 }

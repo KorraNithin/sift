@@ -19,7 +19,7 @@ export async function startApp() {
   async function login(email, password = DEMO_PASSWORD) {
     const res = await fetch(`${base}/api/auth/login`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'x-requested-with': 'sift' },
       body: JSON.stringify({ email, password }),
     });
     return { res, cookie: res.headers.getSetCookie()[0]?.split(';')[0] ?? '' };
@@ -32,7 +32,11 @@ export async function startApp() {
       const isForm = body instanceof FormData;
       const res = await fetch(`${base}/api${url}`, {
         method,
-        headers: { cookie, ...(body && !isForm ? { 'content-type': 'application/json' } : {}) },
+        headers: {
+          cookie,
+          'x-requested-with': 'sift',
+          ...(body && !isForm ? { 'content-type': 'application/json' } : {}),
+        },
         body: body ? (isForm ? body : JSON.stringify(body)) : undefined,
       });
       const text = await res.text();

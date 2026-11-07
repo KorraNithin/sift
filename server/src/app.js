@@ -4,7 +4,7 @@ import helmet from 'helmet';
 import fs from 'node:fs';
 import path from 'node:path';
 import { errorHandler } from './errors.js';
-import { sameOrigin } from './middleware/auth.js';
+import { requireClientHeader } from './middleware/auth.js';
 import { applicationRoutes } from './routes/applications.js';
 import { authRoutes } from './routes/auth.js';
 import { insightRoutes } from './routes/insights.js';
@@ -33,7 +33,7 @@ export function createApp(ctx) {
   );
   app.use(express.json({ limit: '1mb' }));
   app.use(cookieParser());
-  app.use('/api', sameOrigin);
+  app.use('/api', requireClientHeader);
 
   app.get('/api/health', (_req, res) => res.json({ ok: true }));
   app.use('/api/auth', authRoutes(ctx));
