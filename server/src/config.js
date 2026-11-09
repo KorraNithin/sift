@@ -24,6 +24,8 @@ export const config = Object.freeze({
   storageDir: env.STORAGE_DIR || path.join(root, 'data', 'cvs'),
   clientDist: env.CLIENT_DIST || path.resolve(root, '..', 'client', 'dist'),
   cookieSecure: env.COOKIE_SECURE === 'true',
+  // Set when running behind exactly one reverse proxy (Render, Railway, Fly) so client IPs are read correctly.
+  trustProxy: env.TRUST_PROXY === 'true',
   seedDemo: env.SEED_DEMO === 'true',
   anthropicKey: env.ANTHROPIC_API_KEY || '',
   anthropicModel: env.ANTHROPIC_MODEL || 'claude-sonnet-5-5',

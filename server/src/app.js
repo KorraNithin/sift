@@ -18,6 +18,7 @@ import { requisitionRoutes } from './routes/requisitions.js';
 export function createApp(ctx) {
   const app = express();
   app.disable('x-powered-by');
+  if (ctx.config.trustProxy) app.set('trust proxy', 1);
   app.use(
     helmet({
       contentSecurityPolicy: {

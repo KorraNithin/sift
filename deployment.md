@@ -3,7 +3,7 @@
 Sift is one Node service: an Express API that also serves the built React app, backed by a SQLite file.
 There is nothing else to install or run (no separate database server, queue or cache).
 
-**GitHub:** `https://github.com/<your-username>/sift` (replace with the real URL)
+**GitHub:** `https://github.com/KorraNithin/sift`
 **Live app:** add the link here if you deploy it
 
 ## 1. Run it locally
@@ -11,7 +11,7 @@ There is nothing else to install or run (no separate database server, queue or c
 Requirements: **Node.js 20.12 or newer** (22 LTS recommended) and npm. No other tools are needed.
 
 ```bash
-git clone https://github.com/<your-username>/sift.git
+git clone https://github.com/KorraNithin/sift.git
 cd sift
 
 npm install        # installs server and client (npm workspaces)
@@ -90,19 +90,24 @@ but any host that runs Node and offers a persistent volume works (Railway, Fly.i
 > Status: this repository has been run and tested locally. It has not been deployed from the environment it was
 > written in, so the steps below are the intended setup. Add the live URL at the top of this file and in the TDD once deployed.
 
-**Render, step by step**
+**Render, step by step (free plan)**
 
 1. Push the repository to GitHub and keep it public.
-2. Create a **Web Service** from the repo.
+2. On render.com choose **New > Web Service** and pick the repository.
+   - Runtime: Node. Branch: `main`. Region: the one closest to your reviewers.
    - Build command: `npm ci --include=dev && npm run build`
    - Start command: `npm start`
-   - Node version: 22 (set `NODE_VERSION=22`)
-3. Add a **persistent disk** (1 GB is plenty), mounted at `/var/data`.
-4. Set the environment variables below. Use a long random value for `JWT_SECRET`
-   (for example `openssl rand -hex 32`).
-5. Deploy. On first start, `SEED_DEMO=true` creates the demo data if the database is empty.
-   Remove `SEED_DEMO` after the review so a real deployment starts empty.
-6. Open the service URL and sign in with a demo account.
+   - Instance type: Free
+3. Add these environment variables (section 5 explains each): `NODE_VERSION=22`, `NODE_ENV=production`,
+   `JWT_SECRET=<a long random value>` (for example the output of `openssl rand -hex 32`), `COOKIE_SECURE=true`,
+   `TRUST_PROXY=true`, `SEED_DEMO=true`.
+4. Create the service and wait for "Your service is live". Optional: set the health check path to `/api/health`.
+5. Open the service URL and sign in with a demo account.
+
+On the free plan the disk is wiped whenever the service restarts or wakes from sleep, and `SEED_DEMO=true` re-creates the
+demo data each time. That is fine for a demo. For data that survives, use a paid plan with a persistent disk (for example
+mounted at `/var/data`), set `DB_PATH=/var/data/sift.db` and `STORAGE_DIR=/var/data/cvs`, and remove `SEED_DEMO`.
+A free service also sleeps after a period of no traffic, so the first request after a pause can take about 30 seconds.
 
 SQLite on one disk fits a single instance. Scaling beyond one instance means moving to PostgreSQL (see the TDD).
 
@@ -118,6 +123,7 @@ Names only. Never commit values. `.env.example` lists them.
 | `DB_PATH` | Production | SQLite file path, on the persistent disk, e.g. `/var/data/sift.db` | `server/data/sift.db` |
 | `STORAGE_DIR` | Production | Where original CV files are stored, e.g. `/var/data/cvs` | `server/data/cvs` |
 | `COOKIE_SECURE` | Production over HTTPS | Sets the `Secure` flag on the session cookie | `false` |
+| `TRUST_PROXY` | Behind a proxy (Render, Railway, Fly) | `true` makes the server read real client IPs, so the login rate limit is per visitor, not shared | `false` |
 | `SEED_DEMO` | No | `true` seeds demo data when the database is empty | `false` |
 | `VITE_SHOW_DEMO` | No (build time) | `false` removes the one-click demo logins from the bundle | shown |
 | `ANTHROPIC_API_KEY` | No | Enables optional LLM-assisted JD extraction. Falls back to rules if empty or on any error | empty |
