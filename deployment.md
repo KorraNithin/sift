@@ -4,7 +4,7 @@ Sift is one Node service: an Express API that also serves the built React app, b
 There is nothing else to install or run (no separate database server, queue or cache).
 
 **GitHub:** `https://github.com/KorraNithin/sift`
-**Live app:** add the link here if you deploy it
+**Live app:** https://sift-q93w.onrender.com (Render free plan; the first request after a pause can take about 30 seconds)
 
 ## 1. Run it locally
 
@@ -87,8 +87,7 @@ Password for every account: `Demo@1234`
 Sift deploys as **one web service** with **one persistent disk**. The reference setup is [Render](https://render.com),
 but any host that runs Node and offers a persistent volume works (Railway, Fly.io, a VPS).
 
-> Status: this repository has been run and tested locally. It has not been deployed from the environment it was
-> written in, so the steps below are the intended setup. Add the live URL at the top of this file and in the TDD once deployed.
+> Status: deployed on Render's free plan using the steps below. Use the demo logins in section 2 on the live app.
 
 **Render, step by step (free plan)**
 
